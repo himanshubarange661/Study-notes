@@ -56,25 +56,30 @@
       position:relative;
     }
 
-    /* the actual content area — fixed design size, scaled with CSS variable --scale */
-    .canvas {
-      width: calc(var(--maxWidth) * 1px);
-      height: calc(var(--maxHeight) * 1px);
-      transform-origin: 50% 50%;
-      transform: scale(var(--scale));
-      transition: transform 160ms linear;
-      background: linear-gradient(180deg, rgba(10,18,30,0.9), rgba(5,10,18,0.9));
-      border-radius:12px;
-      padding:32px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
-      display:grid;
-      grid-template-columns: 340px 1fr 300px;
-      grid-template-rows: auto 1fr;
-      gap:20px;
-      color:var(--text);
-      /* keep it centered inside viewer even after scaling */
-      will-change: transform;
-    }
+   /* the actual content area — fixed design size, scaled with CSS variable --scale
+   Now absolutely centered so scaling stays visually centered and avoids one-sided clipping */
+.canvas {
+  width: calc(var(--maxWidth) * 1px);
+  height: calc(var(--maxHeight) * 1px);
+  position: absolute;          /* absolute inside .viewer */
+  left: 50%;
+  top: 50%;
+  transform-origin: 50% 50%;
+  /* translate to center, then scale via --scale */
+  transform: translate(-50%, -50%) scale(var(--scale));
+  transition: transform 160ms linear;
+  background: linear-gradient(180deg, rgba(10,18,30,0.9), rgba(5,10,18,0.9));
+  border-radius:12px;
+  padding:32px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+  display:grid;
+  grid-template-columns: 340px 1fr 300px;
+  grid-template-rows: auto 1fr;
+  gap:20px;
+  color:var(--text);
+  will-change: transform;
+}
+
 
     /* header */
     .title {
@@ -301,10 +306,18 @@
       let maxScale = 4;
 
       // update CSS variable (applies to transform on .canvas)
-      function setScale(s){
-        scale = Math.max(minScale, Math.min(maxScale, s));
-        document.documentElement.style.setProperty('--scale', scale);
-      }
+// also update inline transform to ensure translate(-50%,-50%) remains and scale applied cleanly
+function setScale(s){
+  scale = Math.max(minScale, Math.min(maxScale, s));
+  document.documentElement.style.setProperty('--scale', scale);
+
+  // ensure the canvas transform uses translate + scale — keeps it centered
+  // note: canvas is absolutely positioned at 50%/50% in CSS, so we maintain translate there
+  if (canvas) {
+    canvas.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+}
+
 
       // compute fit-to-view scale to show entire canvas inside viewer (accounting viewer padding)
       function computeFitScale(){
