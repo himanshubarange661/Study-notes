@@ -1,0 +1,30 @@
+[
+  {
+    "title": "Time Value of Money",
+    "subject": "economic-mathematics",
+    "tags": ["finance", "discounting"],
+    "path": "topics/economic-mathematics/notes/time-value-money.html",
+    "updated": "2025-10-20"
+  },
+  {
+    "title": "Cognitive Biases",
+    "subject": "psychology",
+    "tags": ["decision-making", "heuristics"],
+    "path": "topics/psychology/notes/cognitive-biases.html",
+    "updated": "2025-10-12"
+  },
+  {
+    "title": "Big-O Cheatsheet",
+    "subject": "computer-science",
+    "tags": ["algorithms", "complexity"],
+    "path": "topics/computer-science/notes/big-o-cheatsheet.html",
+    "updated": "2025-09-05"
+  },
+  {
+    "title": "Roadmap Prioritization",
+    "subject": "product-management",
+    "tags": ["strategy", "frameworks"],
+    "path": "topics/product-management/notes/roadmap-prioritization.html",
+    "updated": "2025-11-01"
+  }
+]
