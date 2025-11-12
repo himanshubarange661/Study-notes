@@ -18,24 +18,42 @@
       --maxHeight: 780; /* design height in px */
       --scale: 1;
     }
+
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071021 0%, #041022 100%);color:var(--text);font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
-    a{color:var(--accent)}
-    /* full-viewport canvas wrapper */
+    html,body{
+      height:100%;
+      margin:0;
+      background:linear-gradient(180deg,#071021 0%, #041022 100%);
+      color:var(--text);
+      font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      overflow:hidden; /* IMPORTANT: no scrollbars */
+    }
+    a{color:var(--accent);}
+
+    /* full-viewport page wrapper: centers the viewer */
     .page {
-      height:100vh; width:100vw;
-      display:flex;align-items:center;justify-content:center;
+      height:100vh;
+      width:100vw;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       padding:18px;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
     }
 
-    /* frame that holds the infographic content (centered) */
+    /* viewer fills available viewport (minus padding) and hides overflow */
     .viewer {
-      width: min(100vw - 36px, calc(var(--maxWidth) * var(--scale) * 1px));
-      height: min(100vh - 36px, calc(var(--maxHeight) * var(--scale) * 1px));
-      display:flex;align-items:center;justify-content:center;
+      width: calc(100vw - 36px);
+      height: calc(100vh - 36px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
       background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border-radius:14px; box-shadow: 0 10px 40px rgba(2,6,23,0.7);
-      overflow:hidden; position:relative;
+      border-radius:14px;
+      box-shadow: 0 10px 40px rgba(2,6,23,0.7);
+      overflow:hidden; /* IMPORTANT: hide scroll inside viewer */
+      position:relative;
     }
 
     /* the actual content area — fixed design size, scaled with CSS variable --scale */
@@ -54,6 +72,8 @@
       grid-template-rows: auto 1fr;
       gap:20px;
       color:var(--text);
+      /* keep it centered inside viewer even after scaling */
+      will-change: transform;
     }
 
     /* header */
@@ -123,6 +143,7 @@
     .controls {
       position:absolute; right:12px; top:12px; display:flex;gap:8px;
       background:rgba(2,6,23,0.5); border-radius:10px; padding:6px; backdrop-filter: blur(6px);
+      z-index:40;
     }
     .controls button {
       background:transparent;border:1px solid rgba(255,255,255,0.06); color:var(--text); padding:8px 10px;border-radius:8px;
@@ -279,7 +300,7 @@
       let minScale = 0.25;
       let maxScale = 4;
 
-      // update CSS variable
+      // update CSS variable (applies to transform on .canvas)
       function setScale(s){
         scale = Math.max(minScale, Math.min(maxScale, s));
         document.documentElement.style.setProperty('--scale', scale);
@@ -287,16 +308,18 @@
 
       // compute fit-to-view scale to show entire canvas inside viewer (accounting viewer padding)
       function computeFitScale(){
+        // viewer client area
         const vw = viewer.clientWidth;
         const vh = viewer.clientHeight;
+        // compute scale that fits design canvas (DPW x DPH) into viewer
         const s = Math.min( vw / DPW, vh / DPH );
-        // clamp a bit
-        return Math.max(0.25, Math.min(2.5, s));
+        return Math.max(minScale, Math.min(maxScale, s));
       }
 
       // initial fit on load
       function fit(){
         setScale(computeFitScale());
+        // center is automatic because viewer uses flexbox; canvas is centered inside viewer
       }
 
       // buttons
@@ -304,14 +327,17 @@
       zoomOutBtn.addEventListener('click', ()=> setScale(scale / 1.15));
       fitBtn.addEventListener('click', fit);
 
-      // handle wheel: ctrl+wheel or wheel while hovered => zoom, otherwise scroll viewer
+      // handle wheel: ctrl+wheel or metaKey => zoom, otherwise ignore (no scrolling)
       viewer.addEventListener('wheel', (ev)=>{
-        // if ctrlKey OR altKey OR shiftKey, use wheel to zoom; otherwise don't hijack native behavior
+        // if ctrlKey or metaKey, use wheel to zoom; otherwise prevent default to avoid scroll
         if (ev.ctrlKey || ev.metaKey){
           ev.preventDefault();
           const delta = -ev.deltaY;
           const factor = 1 + (delta > 0 ? 0.08 : -0.08);
           setScale(scale * factor);
+        } else {
+          // prevent default to stop page from scrolling on trackpads
+          ev.preventDefault();
         }
       }, {passive:false});
 
@@ -321,7 +347,7 @@
 
       viewer.addEventListener('pointerdown', (e)=>{
         pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
-        viewer.setPointerCapture?.(e.pointerId);
+        try { viewer.setPointerCapture(e.pointerId); } catch(_) {}
       });
 
       viewer.addEventListener('pointermove', (e)=>{
@@ -329,7 +355,6 @@
         pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
 
         if (pointers.size === 2){
-          // compute distance between two pointers
           const pts = Array.from(pointers.values());
           const dx = pts[0].x - pts[1].x;
           const dy = pts[0].y - pts[1].y;
@@ -346,23 +371,19 @@
         pointers.delete(e.pointerId);
         if (pointers.size < 2) lastDistance = null;
       }
-      viewer.addEventListener('pointerup', clearPointers);
-      viewer.addEventListener('pointercancel', clearPointers);
-      viewer.addEventListener('pointerout', clearPointers);
-      viewer.addEventListener('pointerleave', clearPointers);
+      ['pointerup','pointercancel','pointerout','pointerleave'].forEach(ev => viewer.addEventListener(ev, clearPointers));
 
       // keyboard shortcuts
       window.addEventListener('keydown', (e)=>{
-        if (e.key === '+' || (e.key === '=' && e.ctrlKey)) { setScale(scale * 1.15); e.preventDefault(); }
-        if (e.key === '-' || (e.key === '_' && e.ctrlKey)) { setScale(scale / 1.15); e.preventDefault(); }
-        if (e.key === '0' && e.ctrlKey) { fit(); e.preventDefault(); }
+        if ((e.key === '+' || e.key === '=') && (e.ctrlKey || e.metaKey)) { setScale(scale * 1.15); e.preventDefault(); }
+        if ((e.key === '-' || e.key === '_') && (e.ctrlKey || e.metaKey)) { setScale(scale / 1.15); e.preventDefault(); }
+        if (e.key === '0' && (e.ctrlKey || e.metaKey)) { fit(); e.preventDefault(); }
       });
 
       // on resize refit if current scale is near the fit scale (so users who didn't change zoom still see fit)
       let lastFit = computeFitScale();
       window.addEventListener('resize', ()=>{
         const currentFit = computeFitScale();
-        // if scale is within 10% of previous fit, update
         if (Math.abs(scale - lastFit) / Math.max(0.001, lastFit) < 0.12){
           setScale(currentFit);
         }
@@ -372,7 +393,7 @@
       // initial
       fit();
 
-      // accessibility: allow Home/End to reset/focus
+      // accessibility: refit when page becomes visible (useful after switching tabs)
       document.addEventListener('visibilitychange', ()=> { if (!document.hidden) fit(); });
 
     })();
