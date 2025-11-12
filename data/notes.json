@@ -26,14 +26,12 @@
     "tags": ["strategy", "frameworks"],
     "path": "topics/product-management/notes/roadmap-prioritization.html",
     "updated": "2025-11-01"
-  }
-
+  },
   {
-    "title": "Blockchain — Part 1: Foundations",
+    "title": "Blockchain - Part 1: Foundations",
     "subject": "blockchain",
     "tags": ["foundations","cryptography","consensus"],
     "path": "topics/blockchain/notes/part1-foundations.html",
     "updated": "2025-11-13"
   }
-  
 ]
